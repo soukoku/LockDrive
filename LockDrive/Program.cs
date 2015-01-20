@@ -59,6 +59,7 @@ namespace LockDrive
                 ClassName = "Win32_EncryptableVolume"
             };
 
+            Console.WriteLine("Working...");
             using (var wmiClass = new ManagementClass(path))
             {
                 foreach (ManagementObject vol in wmiClass.GetInstances())
