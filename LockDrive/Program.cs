@@ -14,8 +14,7 @@ namespace LockDrive
     {
         static void Main(string[] args)
         {
-            // only vista or higher
-            if (Environment.OSVersion.Version >= new Version(6, 0))
+            if (IsSupportedOS())
             {
                 var maybeDrive = (args.FirstOrDefault() ?? PromptForDrive()).Trim();
 
@@ -28,7 +27,8 @@ namespace LockDrive
                     }
                     try
                     {
-                        // trim \" as a workaround for bug in command line parameter parsing
+                        // trim extra " as a workaround for bug in command line parameter parsing 
+                        // (seen by dragging drive icon to exe as parameter)
                         var drive = new DirectoryInfo(maybeDrive.Trim('\"'));
                         if (drive.Parent == null)
                         {
@@ -50,6 +50,17 @@ namespace LockDrive
                     }
                 }
             }
+            else
+            {
+                Console.WriteLine(Texts.ErrorNotSupportedOS);
+            }
+        }
+
+        private static bool IsSupportedOS()
+        {
+            // only vista or higher
+            return Environment.OSVersion.Platform == PlatformID.Win32NT &&
+                Environment.OSVersion.Version >= new Version(6, 0);
         }
 
         private static string PromptForDrive()

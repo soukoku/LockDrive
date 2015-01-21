@@ -135,6 +135,9 @@
   <data name="ErrorNotEncrypted" xml:space="preserve">
     <value>The volume is fully decrypted and cannot be locked.</value>
   </data>
+  <data name="ErrorNotSupportedOS" xml:space="preserve">
+    <value>This tool requires Windows Vista or higher.</value>
+  </data>
   <data name="ErrorNotUBLDrive" xml:space="preserve">
     <value>Not an unlocked BitLocker drive.</value>
   </data>

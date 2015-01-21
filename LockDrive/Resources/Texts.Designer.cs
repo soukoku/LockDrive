@@ -115,6 +115,15 @@ namespace LockDrive.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to This tool requires Windows Vista or higher..
+        /// </summary>
+        internal static string ErrorNotSupportedOS {
+            get {
+                return ResourceManager.GetString("ErrorNotSupportedOS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Not an unlocked BitLocker drive..
         /// </summary>
         internal static string ErrorNotUBLDrive {
