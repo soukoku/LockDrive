@@ -1,12 +1,13 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Resources;
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("LockDrive")]
-[assembly: AssemblyDescription("Locks a bitlocker drive if it's passed as the first command parameter.")]
+[assembly: AssemblyDescription("Command line utility for locking a BitLocker drive.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Eugene Wang")]
 [assembly: AssemblyProduct("LockDrive")]
@@ -27,3 +28,4 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: NeutralResourcesLanguageAttribute("en")]

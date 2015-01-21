@@ -1,5 +1,7 @@
-﻿using System;
+﻿using LockDrive.Resources;
+using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Management;
@@ -12,95 +14,104 @@ namespace LockDrive
     {
         static void Main(string[] args)
         {
-            var maybeDrive = args.FirstOrDefault();
-            if (string.IsNullOrEmpty(maybeDrive))
+            // only vista or higher
+            if (Environment.OSVersion.Version >= new Version(6, 0))
             {
-                Console.WriteLine("==================================================");
-                Console.WriteLine("This utility locks an unlocked BitLocker drive.");
-                Console.WriteLine("Pass the drive letter as the parameter or type it");
-                Console.WriteLine("below to use it.");
-                Console.WriteLine("==================================================");
-                Console.WriteLine();
-                Console.Write("Enter the drive letter (or enter to exit):");
+                var maybeDrive = (args.FirstOrDefault() ?? PromptForDrive()).Trim();
 
-                maybeDrive = Console.ReadLine();
-            }
-
-            if (!string.IsNullOrEmpty(maybeDrive) &&
-                CheckAndRestartAsAdmin(maybeDrive))
-            {
-                if (maybeDrive.Length == 1)
+                if (!string.IsNullOrEmpty(maybeDrive) &&
+                    CheckOrRestartAsAdmin(maybeDrive))
                 {
-                    maybeDrive += ':';
-                }
-                try
-                {
-                    var drive = new DirectoryInfo(maybeDrive.Trim(' ', '\"'));
-                    if (drive.Parent == null)
+                    if (maybeDrive.Length == 1)
                     {
-                        TryUnUnlockDrive(drive);
+                        maybeDrive += ':';
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Error: " + ex.Message);
-                    Console.WriteLine();
-                    Console.WriteLine("Press any key to exit...");
-                    Console.ReadLine();
+                    try
+                    {
+                        // trim \" as a workaround for bug in command line parameter parsing
+                        var drive = new DirectoryInfo(maybeDrive.Trim('\"'));
+                        if (drive.Parent == null)
+                        {
+                            Console.WriteLine(Texts.WorkingLine);
+                            LockDrive(drive.Name);
+                            Console.WriteLine(string.Format(CultureInfo.InvariantCulture, Texts.SuccessLineFormat, drive.Name));
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, Texts.ErrorNotDriveFormat, maybeDrive));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(string.Format(CultureInfo.InvariantCulture, Texts.ErrorLineFormat, ex.Message));
+                        Console.WriteLine();
+                        Console.WriteLine(Texts.ExitLine);
+                        Console.ReadLine();
+                    }
                 }
             }
         }
 
-        private static void TryUnUnlockDrive(DirectoryInfo drive)
+        private static string PromptForDrive()
+        {
+            Console.WriteLine(Texts.PromptBanner);
+            Console.WriteLine();
+            Console.Write(Texts.PromptLine);
+            return Console.ReadLine();
+        }
+
+        private static void LockDrive(string drive)
         {
             var path = new ManagementPath
             {
                 NamespacePath = "\\ROOT\\CIMV2\\Security\\MicrosoftVolumeEncryption",
                 ClassName = "Win32_EncryptableVolume"
             };
-
-            Console.WriteLine("Working...");
             using (var wmiClass = new ManagementClass(path))
             {
                 foreach (ManagementObject vol in wmiClass.GetInstances())
                 {
                     var letter = vol["DriveLetter"].ToString();
-                    if (drive.Name.StartsWith(letter, StringComparison.OrdinalIgnoreCase))
+                    if (drive.StartsWith(letter, StringComparison.OrdinalIgnoreCase))
                     {
                         var status = (uint)vol["ProtectionStatus"];
                         if (status == 1)
                         {
-                            var inParams = vol.GetMethodParameters("Lock");
-                            inParams["ForceDismount"] = false;
-                            var outParams = vol.InvokeMethod("Lock", inParams, null);
-                            var result = (uint)outParams["returnValue"];
-                            switch (result)
+                            using (var inParams = vol.GetMethodParameters("Lock"))
                             {
-                                case 0://S_OK
-                                    return;
-                                case 0x80070005: // E_ACCESS_DENIED
-                                    throw new Exception("Access denied.");
-                                case 0x80310001: // FVE_E_NOT_ENCRYPTED
-                                    throw new Exception("Not encrypted.");
-                                case 0x80310021: // FVE_E_PROTECTION_DISABLED
-                                    throw new Exception("Protection disabled.");
-                                case 0x80310022: // FVE_E_RECOVERY_KEY_REQUIRED
-                                    throw new Exception("Key required.");
-                                default:
-                                    throw new Exception(string.Format("Unknown code {0:X}", result));
+                                inParams["ForceDismount"] = false;
+                                using (var outParams = vol.InvokeMethod("Lock", inParams, null))
+                                {
+                                    var result = (uint)outParams["returnValue"];
+                                    switch (result)
+                                    {
+                                        case 0://S_OK
+                                            return;
+                                        case 0x80070005: // E_ACCESS_DENIED
+                                            throw new InvalidOperationException(Texts.ErrorAccessDenied);
+                                        case 0x80310001: // FVE_E_NOT_ENCRYPTED
+                                            throw new InvalidOperationException(Texts.ErrorNotEncrypted);
+                                        case 0x80310021: // FVE_E_PROTECTION_DISABLED
+                                            throw new InvalidOperationException(Texts.ErrorProtectionDisabled);
+                                        case 0x80310022: // FVE_E_RECOVERY_KEY_REQUIRED
+                                            throw new InvalidOperationException(Texts.ErrorKeyRequired);
+                                        default:
+                                            throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, Texts.ErrorUnknownCodeFormat, result));
+                                    }
+                                }
                             }
                         }
                         else
                         {
-                            throw new Exception("Not an unlocked BitLocker drive.");
+                            throw new InvalidOperationException(Texts.ErrorNotUBLDrive);
                         }
                     }
                 }
             }
-            throw new Exception(string.Format("No drive found for {0}.", drive.Name));
+            throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, Texts.ErrorNoMatchingDriveFormat, drive));
         }
 
-        private static bool CheckAndRestartAsAdmin(string arg)
+        private static bool CheckOrRestartAsAdmin(string arg)
         {
             var identity = WindowsIdentity.GetCurrent();
             var principal = new WindowsPrincipal(identity);
