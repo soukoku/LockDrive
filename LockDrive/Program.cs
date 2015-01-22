@@ -46,7 +46,7 @@ namespace LockDrive
                         Console.WriteLine(string.Format(CultureInfo.InvariantCulture, Texts.ErrorLineFormat, ex.Message));
                         Console.WriteLine();
                         Console.WriteLine(Texts.ExitLine);
-                        Console.ReadLine();
+                        Console.Read();
                     }
                 }
             }
